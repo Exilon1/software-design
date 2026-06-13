@@ -29,36 +29,40 @@ public class JanitorBot {
       switch (command) {
         case "move" -> {
           if (parts.length != 2) {
-            System.out.println("Usage: move <distance>");
+            transferToClean("Usage: move <distance>");
             continue;
           }
           var distance = move(Double.parseDouble(parts[1]));
-          System.out.println("POS " + distance.get(0) + "," + distance.get(1));
+          transferToClean("POS " + distance.get(0) + "," + distance.get(1));
         }
         case "turn" -> {
           if (parts.length != 2) {
-            System.out.println("Usage: turn <angle>");
+            transferToClean("Usage: turn <angle>");
             continue;
           }
-          System.out.println("ANGLE " + turn(Double.parseDouble(parts[1])));
+          transferToClean("ANGLE " + turn(Double.parseDouble(parts[1])));
         }
         case "set" -> {
           if (parts.length != 2) {
             System.out.println("Usage: set <state>");
             continue;
           }
-          System.out.println("STATE " + set(State.valueOf(parts[1].toUpperCase())));
+          transferToClean("STATE " + set(State.valueOf(parts[1].toUpperCase())));
         }
-        case "start" -> System.out.println("START WITH " + currentState);
+        case "start" -> transferToClean("START WITH " + currentState);
         case "stop" -> {
           stop();
-          System.out.println("STOP");
+          transferToClean("STOP");
           return;
         }
 
-        default -> System.out.println("Unknown command: " + command);
+        default -> transferToClean("Unknown command: " + command);
       }
     }
+  }
+
+  public static void transferToClean(String message) {
+    System.out.println(message);
   }
 
   public static List<Double> move(double forwardM) {
