@@ -56,7 +56,7 @@ public class BotStarter {
 }
 
 
-class JanitorBot {
+class JanitorBot implements JanitorBotApi {
 
   private double currentX;
   private double currentY;
@@ -70,10 +70,12 @@ class JanitorBot {
     this.currentState = currentState;
   }
 
+  @Override
   public void transferToClean(String message) {
     System.out.println(message);
   }
 
+  @Override
   public List<Double> move(double forwardM) {
     double radians = Math.toRadians(currentAngle);
     currentX = currentX + forwardM * Math.cos(radians);
@@ -85,23 +87,32 @@ class JanitorBot {
     );
   }
 
+  @Override
   public double turn(double angle) {
     currentAngle += angle;
     return currentAngle;
   }
 
+  @Override
   public State set(State state) {
     currentState = state;
     return currentState;
   }
 
+  @Override
   public State start() {
     transferToClean("START WITH " + currentState);
     return currentState;
   }
 
+  @Override
   public void stop() {
     transferToClean("STOP");
+  }
+
+  @Override
+  public void make(String code, State state) {
+
   }
 }
 
