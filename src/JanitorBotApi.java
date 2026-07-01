@@ -2,17 +2,17 @@ import java.util.List;
 
 public interface JanitorBotApi {
 
-  void transferToClean(String message);
+  Result transferToClean(String message, Result result);
 
-  List<Double> move(double forwardM);
+  Result move(double forwardM, Result result);
 
-  double turn(double angle);
+  Result turn(double angle, Result result);
 
-  State set(State state);
+  Result set(State state, Result result);
 
-  State start();
+  Result start(Result result);
 
-  void stop();
+  Result stop(Result result);
 
-  void make (String code, State state);
+  Result make (String code, State state, Result result);
 }
