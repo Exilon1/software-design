@@ -3,7 +3,8 @@ import java.util.Scanner;
 public class BotStarter {
 
   public static void main(String[] args) {
-    JanitorBot bot = new JanitorBot();
+    BootConfig bootConfig = new BootConfig();
+    JanitorBotApi botApi = bootConfig.janitorBotApi();
     Result result = new Result(0, 0, 0, State.WATER);
 
     Scanner scanner = new Scanner(System.in);
@@ -24,8 +25,8 @@ public class BotStarter {
             System.out.println("Usage: move <distance>");
             continue;
           }
-          var distance = bot.move(Double.parseDouble(parts[1]), result);
-          bot.transferToClean("POS " + distance.getCurrentX() + "," +
+          var distance = botApi.move(Double.parseDouble(parts[1]), result);
+          botApi.transferToClean("POS " + distance.getCurrentX() + "," +
               distance.getCurrentY(), result);
         }
         case "turn" -> {
@@ -33,7 +34,7 @@ public class BotStarter {
             System.out.println("Usage: turn <angle>");
             continue;
           }
-          bot.transferToClean("ANGLE " + bot.turn(Double.parseDouble(parts[1]), result),
+          botApi.transferToClean("ANGLE " + botApi.turn(Double.parseDouble(parts[1]), result),
               result);
         }
         case "set" -> {
@@ -41,12 +42,12 @@ public class BotStarter {
             System.out.println("Usage: set <state>");
             continue;
           }
-          bot.transferToClean("STATE " + bot.set(State.valueOf(parts[1].toUpperCase()),
+          botApi.transferToClean("STATE " + botApi.set(State.valueOf(parts[1].toUpperCase()),
               result), result);
         }
-        case "start" -> bot.start(result);
+        case "start" -> botApi.start(result);
         case "stop" -> {
-          bot.stop(result);
+          botApi.stop(result);
           return;
         }
 
@@ -148,6 +149,14 @@ class Result {
 
   public void setCurrentState(State currentState) {
     this.currentState = currentState;
+  }
+}
+
+//Dependency injection
+class BootConfig {
+
+  public JanitorBotApi janitorBotApi() {
+    return new JanitorBot();
   }
 }
 
