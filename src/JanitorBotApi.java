@@ -4,15 +4,15 @@ public interface JanitorBotApi {
 
   Result transferToClean(String message, Result result);
 
-  Result move(double forwardM, Result result);
+  Result move(Command command, Result result);
 
-  Result turn(double angle, Result result);
+  Result turn(Command command, Result result);
 
-  Result set(State state, Result result);
+  Result set(Command command, Result result);
 
-  Result start(Result result);
+  Result start(Command command, Result result);
 
-  Result stop(Result result);
+  Result stop(Command command,Result result);
 
-  Result make (String code, State state, Result result);
+  Result make (Command command, Result result);
 }

@@ -1,3 +1,4 @@
+import java.util.Map;
 import java.util.Scanner;
 
 public class BotStarter {
@@ -6,6 +7,14 @@ public class BotStarter {
     BootConfig bootConfig = new BootConfig();
     JanitorBotApi botApi = bootConfig.janitorBotApi();
     Result result = new Result(0, 0, 0, State.WATER);
+
+    Map<String, RobotProgram> program = Map.of(
+        "move", botApi::move,
+        "turn", botApi::turn,
+        "set", botApi::set,
+        "start", botApi::start,
+        "stop", botApi::stop
+    );
 
     Scanner scanner = new Scanner(System.in);
 
@@ -25,7 +34,7 @@ public class BotStarter {
             System.out.println("Usage: move <distance>");
             continue;
           }
-          var distance = botApi.move(Double.parseDouble(parts[1]), result);
+          var distance = program.get("move").run(new Command(Double.parseDouble(parts[1]), 0), result);
           botApi.transferToClean("POS " + distance.getCurrentX() + "," +
               distance.getCurrentY(), result);
         }
@@ -34,7 +43,7 @@ public class BotStarter {
             System.out.println("Usage: turn <angle>");
             continue;
           }
-          botApi.transferToClean("ANGLE " + botApi.turn(Double.parseDouble(parts[1]), result),
+          botApi.transferToClean("ANGLE " + program.get("turn").run(new Command(0, Double.parseDouble(parts[1])), result),
               result);
         }
         case "set" -> {
@@ -42,12 +51,12 @@ public class BotStarter {
             System.out.println("Usage: set <state>");
             continue;
           }
-          botApi.transferToClean("STATE " + botApi.set(State.valueOf(parts[1].toUpperCase()),
+          botApi.transferToClean("STATE " + program.get("set").run(new Command(State.valueOf(parts[1].toUpperCase())),
               result), result);
         }
-        case "start" -> botApi.start(result);
+        case "start" -> program.get("start").run(new Command(), result);
         case "stop" -> {
-          botApi.stop(result);
+          program.get("stop").run(new Command(), result);
           return;
         }
 
@@ -67,40 +76,40 @@ class JanitorBot implements JanitorBotApi {
   }
 
   @Override
-  public Result move(double forwardM, Result result) {
+  public Result move(Command command, Result result) {
     double radians = Math.toRadians(result.getCurrentAngle());
-    result.setCurrentX(result.getCurrentX() + forwardM * Math.cos(radians));
-    result.setCurrentY(result.getCurrentY() + forwardM * Math.sin(radians));
+    result.setCurrentX(result.getCurrentX() + command.getForwardM() * Math.cos(radians));
+    result.setCurrentY(result.getCurrentY() + command.getForwardM() * Math.sin(radians));
 
     return result;
   }
 
   @Override
-  public Result turn(double angle, Result result) {
-    result.setCurrentAngle(result.getCurrentAngle() + angle);
+  public Result turn(Command command, Result result) {
+    result.setCurrentAngle(result.getCurrentAngle() + command.getAngle());
     return result;
   }
 
   @Override
-  public Result set(State state, Result result) {
-    result.setCurrentState(state);
+  public Result set(Command command, Result result) {
+    result.setCurrentState(command.getState());
     return result;
   }
 
   @Override
-  public Result start(Result result) {
+  public Result start(Command command, Result result) {
     transferToClean("START WITH " + result.getCurrentState(), result);
     return result;
   }
 
   @Override
-  public Result stop(Result result) {
+  public Result stop(Command command, Result result) {
     transferToClean("STOP", result);
     return result;
   }
 
   @Override
-  public Result make(String code, State state, Result result) {
+  public Result make(Command command, Result result) {
     return result;
   }
 }
@@ -152,12 +161,57 @@ class Result {
   }
 }
 
+class Command {
+  private double forwardM;
+  private double angle;
+  private State state;
+  private String code;
+
+  public Command() {
+  }
+
+  public Command(double forwardM, double angle) {
+    this.forwardM = forwardM;
+    this.angle = angle;
+  }
+
+  public Command(State state) {
+    this.state = state;
+  }
+
+  public Command(String code, State state) {
+    this.code = code;
+    this.state = state;
+  }
+
+  public double getForwardM() {
+    return forwardM;
+  }
+
+  public double getAngle() {
+    return angle;
+  }
+
+  public State getState() {
+    return state;
+  }
+
+  public String getCode() {
+    return code;
+  }
+}
+
 //Dependency injection
 class BootConfig {
 
   public JanitorBotApi janitorBotApi() {
     return new JanitorBot();
   }
+}
+
+@FunctionalInterface
+interface RobotProgram {
+  Result run(Command command, Result result);
 }
 
 enum State {
