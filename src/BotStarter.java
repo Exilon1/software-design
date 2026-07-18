@@ -1,4 +1,3 @@
-import java.util.Map;
 import java.util.Scanner;
 
 public class BotStarter {
@@ -6,15 +5,9 @@ public class BotStarter {
   public static void main(String[] args) {
     BootConfig bootConfig = new BootConfig();
     JanitorBotApi botApi = bootConfig.janitorBotApi();
-    Result result = new Result(0, 0, 0, State.WATER);
+    RobotProgram program = bootConfig.robotProgram(botApi);
 
-    Map<String, RobotProgram> program = Map.of(
-        "move", botApi::move,
-        "turn", botApi::turn,
-        "set", botApi::set,
-        "start", botApi::start,
-        "stop", botApi::stop
-    );
+    Result result = new Result(0, 0, 0, State.WATER);
 
     Scanner scanner = new Scanner(System.in);
 
@@ -34,7 +27,7 @@ public class BotStarter {
             System.out.println("Usage: move <distance>");
             continue;
           }
-          var distance = program.get("move").run(new Command(Double.parseDouble(parts[1]), 0), result);
+          var distance = program.run(new Command("move", Double.parseDouble(parts[1]), 0), result);
           botApi.transferToClean("POS " + distance.getCurrentX() + "," +
               distance.getCurrentY(), result);
         }
@@ -43,7 +36,7 @@ public class BotStarter {
             System.out.println("Usage: turn <angle>");
             continue;
           }
-          botApi.transferToClean("ANGLE " + program.get("turn").run(new Command(0, Double.parseDouble(parts[1])), result),
+          botApi.transferToClean("ANGLE " + program.run(new Command("turn", 0, Double.parseDouble(parts[1])), result),
               result);
         }
         case "set" -> {
@@ -51,12 +44,12 @@ public class BotStarter {
             System.out.println("Usage: set <state>");
             continue;
           }
-          botApi.transferToClean("STATE " + program.get("set").run(new Command(State.valueOf(parts[1].toUpperCase())),
+          botApi.transferToClean("STATE " + program.run(new Command("set", State.valueOf(parts[1].toUpperCase())),
               result), result);
         }
-        case "start" -> program.get("start").run(new Command(), result);
+        case "start" -> program.run(new Command("start"), result);
         case "stop" -> {
-          program.get("stop").run(new Command(), result);
+          program.run(new Command("stop"), result);
           return;
         }
 
@@ -167,16 +160,13 @@ class Command {
   private State state;
   private String code;
 
-  public Command() {
+  public Command(String code) {
+    this.code = code;
   }
 
-  public Command(double forwardM, double angle) {
+  public Command(String code, double forwardM, double angle) {
     this.forwardM = forwardM;
     this.angle = angle;
-  }
-
-  public Command(State state) {
-    this.state = state;
   }
 
   public Command(String code, State state) {
@@ -203,6 +193,20 @@ class Command {
 
 //Dependency injection
 class BootConfig {
+
+  public RobotProgram robotProgram(JanitorBotApi botApi) {
+
+    return (command, result) -> switch (command.getCode()) {
+      case "move" -> botApi.move(command, result);
+      case "turn" -> botApi.turn(command, result);
+      case "set" -> botApi.set(command, result);
+      case "start" -> botApi.start(command, result);
+      case "stop" -> botApi.stop(command, result);
+      default -> throw new IllegalArgumentException(
+          "Unknown command: " + command.getCode()
+      );
+    };
+  }
 
   public JanitorBotApi janitorBotApi() {
     return new JanitorBot();
