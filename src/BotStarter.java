@@ -1,6 +1,17 @@
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.Scanner;
+import java.util.Set;
 
 public class BotStarter {
+
+  private static final Set<String> COMMANDS = Set.of(
+      "move",
+      "turn",
+      "set",
+      "start",
+      "stop"
+  );
 
   public static void main(String[] args) {
     BootConfig bootConfig = new BootConfig();
@@ -8,6 +19,10 @@ public class BotStarter {
     RobotProgram program = bootConfig.robotProgram(botApi);
 
     Result result = new Result(0, 0, 0, State.WATER);
+
+    //Двухстековая архитектура
+    Deque<String> commandStack = new ArrayDeque<>();
+    Deque<String> dataStack = new ArrayDeque<>();
 
     Scanner scanner = new Scanner(System.in);
 
@@ -17,45 +32,102 @@ public class BotStarter {
       if (line.isEmpty()) {
         continue;
       }
-      String[] parts = line.split("\\s+", 2);
 
-      String command = parts[0];
+      parse(line, commandStack, dataStack);
+
+      var newResult = execute(commandStack, dataStack, program, botApi, result);
+      System.out.println("Command stack: " + commandStack);
+      System.out.println("Data stack: " + dataStack);
+      System.out.printf(
+          "Final result: x=%.2f, y=%.2f, angle=%.2f, state=%s%n",
+          newResult.getCurrentX(),
+          newResult.getCurrentY(),
+          newResult.getCurrentAngle(),
+          newResult.getCurrentState()
+      );
+    }
+  }
+
+
+
+  private static void parse(
+      String input,
+      Deque<String> commandStack,
+      Deque<String> dataStack
+  ) {
+    if (input == null || input.isBlank()) {
+      return;
+    }
+
+    String[] tokens = input.trim().split("\\s+");
+
+    for (String token : tokens) {
+      String normalizedToken = token.toLowerCase();
+      if (COMMANDS.contains(normalizedToken)) {
+        commandStack.push(normalizedToken);
+      } else {
+        dataStack.push(token);
+      }
+    }
+  }
+
+  private static String popData(
+      Deque<String> dataStack,
+      String commandName
+  ) {
+    if (dataStack.isEmpty()) {
+      throw new IllegalArgumentException(
+          "Not enough data for command: " + commandName
+      );
+    }
+
+    return dataStack.pop();
+  }
+
+  private static Result execute(
+      Deque<String> commandStack,
+      Deque<String> dataStack,
+      RobotProgram program,
+      JanitorBotApi botApi,
+      Result result
+  ) {
+    while (!commandStack.isEmpty()) {
+      String command = commandStack.pop();
 
       switch (command) {
         case "move" -> {
-          if (parts.length != 2) {
-            System.out.println("Usage: move <distance>");
-            continue;
-          }
-          var distance = program.run(new Command("move", Double.parseDouble(parts[1]), 0), result);
+          String value = popData(dataStack, command);
+
+          var distance = program.run(new Command("move", Double.parseDouble(value), 0), result);
           botApi.transferToClean("POS " + distance.getCurrentX() + "," +
               distance.getCurrentY(), result);
         }
         case "turn" -> {
-          if (parts.length != 2) {
-            System.out.println("Usage: turn <angle>");
-            continue;
-          }
-          botApi.transferToClean("ANGLE " + program.run(new Command("turn", 0, Double.parseDouble(parts[1])), result),
+          String value = popData(dataStack, command);
+
+          botApi.transferToClean("ANGLE " + program.run(new Command("turn", 0, Double.parseDouble(value)), result),
               result);
         }
         case "set" -> {
-          if (parts.length != 2) {
-            System.out.println("Usage: set <state>");
-            continue;
-          }
-          botApi.transferToClean("STATE " + program.run(new Command("set", State.valueOf(parts[1].toUpperCase())),
+          String value = popData(dataStack, command);
+
+          botApi.transferToClean("STATE " + program.run(new Command("set", State.valueOf(value.toUpperCase())),
               result), result);
         }
         case "start" -> program.run(new Command("start"), result);
-        case "stop" -> {
-          program.run(new Command("stop"), result);
-          return;
-        }
+        case "stop" -> program.run(new Command("stop"), result);
 
         default -> System.out.println("Unknown command: " + command);
       }
     }
+
+    if (!dataStack.isEmpty()) {
+      throw new IllegalArgumentException(
+          "Unused data remains: " + dataStack
+      );
+    }
+
+    return result;
   }
 }
 
@@ -165,6 +237,7 @@ class Command {
   }
 
   public Command(String code, double forwardM, double angle) {
+    this.code = code;
     this.forwardM = forwardM;
     this.angle = angle;
   }
